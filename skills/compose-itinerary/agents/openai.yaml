@@ -1,0 +1,4 @@
+interface:
+  display_name: "行程编排"
+  short_description: "根据约束与候选地点生成结构化且动线合理的每日行程，适用于可分享的对话式出行规划工作流"
+  default_prompt: "Use $compose-itinerary to build a structured day-by-day trip."

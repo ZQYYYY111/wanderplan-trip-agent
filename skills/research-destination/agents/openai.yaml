@@ -1,0 +1,4 @@
+interface:
+  display_name: "目的地研究"
+  short_description: "检索天气交通营业时间等需要实时核验的目的地信息，适用于可分享的对话式出行规划工作流"
+  default_prompt: "Use $research-destination to research this destination with fresh sources."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "行程校验"
+  short_description: "检查行程的时间预算动线营业状态与信息来源风险，适用于可分享的对话式出行规划工作流"
+  default_prompt: "Use $validate-itinerary to check this trip for conflicts and risks."

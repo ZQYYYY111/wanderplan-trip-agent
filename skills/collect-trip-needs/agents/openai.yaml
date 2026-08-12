@@ -1,0 +1,4 @@
+interface:
+  display_name: "需求收集"
+  short_description: "把自然语言出行想法整理为清晰且可执行的约束条件，适用于可分享的对话式出行规划工作流"
+  default_prompt: "Use $collect-trip-needs to turn my travel request into structured constraints."

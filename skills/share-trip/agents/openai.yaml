@@ -1,0 +1,4 @@
+interface:
+  display_name: "好友分享"
+  short_description: "创建脱敏只读分享视图并安全收集好友修改建议，适用于可分享的对话式出行规划工作流"
+  default_prompt: "Use $share-trip to create a safe view I can share with friends."

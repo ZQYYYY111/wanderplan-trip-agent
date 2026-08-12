@@ -1,0 +1,4 @@
+interface:
+  display_name: "局部修改"
+  short_description: "保留无关内容并以可撤销补丁方式局部修改现有行程，适用于可分享的对话式出行规划工作流"
+  default_prompt: "Use $revise-itinerary to apply this change without rewriting my whole trip."
