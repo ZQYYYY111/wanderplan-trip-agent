@@ -17,6 +17,7 @@ export type RuntimeSkill = {
   description: string;
   phase: SkillPhase;
   instructions: string;
+  provenance?: { source: string; pattern: string };
   supports(intent: AgentIntent): boolean;
   run(context: SkillContext): Promise<SkillRunResult>;
 };

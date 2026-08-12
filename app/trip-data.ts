@@ -1,5 +1,5 @@
-export type Activity={id:string;time:string;title:string;detail:string;tag:string;cost:number};
-export type TripDay={date:string;weekday:string;theme:string;area:string;weather:string;activities:Activity[]};
+export type Activity={id:string;time:string;title:string;detail:string;tag:string;cost:number;duration?:string;transport?:string;food?:string;tips?:string;mapUrl?:string};
+export type TripDay={date:string;weekday:string;theme:string;area:string;weather:string;routeSummary?:string;meals?:string[];activities:Activity[]};
 export type TripSource={label:string;url:string;retrievedAt:string;freshness?:"verified"|"recent"|"reference"};
 export type Trace={name:string;label?:string;status?:"waiting"|"running"|"completed"|"warning";detail:string;code:string;durationMs?:number};
 export type TripPlan={id:string;title:string;destination:string;dates:string;travelers:string;budget:number;version:number;days:TripDay[];notices:string[];assumptions:string[];sources:TripSource[];budgetBreakdown?:{label:string;amount:number}[]};
@@ -8,7 +8,7 @@ export type TripChange={type:"added"|"removed"|"changed";label:string;before?:st
 export const demoTrip:TripPlan={
  id:"trip-demo-kyoto",title:"京都 · 慢游秋日",destination:"京都",dates:"10月18日—10月21日",travelers:"2 位朋友",budget:6200,version:3,
  days:[
-  {date:"10月18日",weekday:"周日",theme:"初见京都，沿鸭川散步",area:"祇园 · 东山",weather:"天气待查询",activities:[{id:"d1-a1",time:"10:30",title:"抵达京都站",detail:"寄存行李，乘地铁前往四条",tag:"交通 · 约25分钟",cost:40},{id:"d1-a2",time:"12:00",title:"锦市场午餐",detail:"先逛后吃，避开最拥挤入口",tag:"美食 · 可灵活调整",cost:220},{id:"d1-a3",time:"15:00",title:"清水寺与二年坂",detail:"预留 2.5 小时，步行游览东山",tag:"景点 · 建议核验开放时间",cost:80}]},
+  {date:"10月18日",weekday:"周日",theme:"初见京都，沿鸭川散步",area:"祇园 · 东山",weather:"天气待查询",routeSummary:"京都站 → 锦市场 → 清水寺 → 二年坂，尽量沿同一片区步行串联",meals:["午餐：锦市场小吃，建议选择玉子烧、豆乳甜品和烤物","晚餐：祇园附近京料理或荞麦面，预算约 150–250 元/人"],activities:[{id:"d1-a1",time:"10:30",title:"抵达京都站",detail:"寄存行李，乘地铁前往四条",tag:"交通 · 约25分钟",cost:40,duration:"约25分钟",transport:"地铁乌丸线至四条站，步行前往锦市场"},{id:"d1-a2",time:"12:00",title:"锦市场午餐",detail:"先逛后吃，避开最拥挤入口",tag:"美食 · 可灵活调整",cost:220,duration:"约90分钟",food:"玉子烧、豆乳甜品、烤物；边走边吃需留意店铺规则"},{id:"d1-a3",time:"15:00",title:"清水寺与二年坂",detail:"预留 2.5 小时，步行游览东山",tag:"景点 · 建议核验开放时间",cost:80,duration:"约2.5小时",transport:"从锦市场乘公交或出租车至五条坂，再步行上山",tips:"坡路和石阶较多，穿防滑鞋；开放时间出发前再次核验"}]},
   {date:"10月19日",weekday:"周一",theme:"岚山的竹影与山色",area:"岚山",weather:"天气待查询",activities:[{id:"d2-a1",time:"08:00",title:"JR 前往岚山",detail:"避开人流，约 35 分钟抵达",tag:"交通 · 早出发",cost:55},{id:"d2-a2",time:"09:00",title:"竹林小径与天龙寺",detail:"清晨游览约 2 小时",tag:"景点 · 步行",cost:100},{id:"d2-a3",time:"12:00",title:"渡月桥附近午餐",detail:"预留等位时间，选择豆腐料理",tag:"美食",cost:260}]},
   {date:"10月20日",weekday:"周二",theme:"伏见稻荷与宇治茶香",area:"伏见 · 宇治",weather:"天气待查询",activities:[{id:"d3-a1",time:"08:30",title:"伏见稻荷大社",detail:"走至四辻后折返",tag:"景点 · 约2小时",cost:0},{id:"d3-a2",time:"11:30",title:"前往宇治",detail:"交通时间出发前再次核验",tag:"交通",cost:45},{id:"d3-a3",time:"12:30",title:"宇治茶午餐",detail:"茶荞麦与抹茶甜点组合",tag:"美食",cost:240}]},
   {date:"10月21日",weekday:"周三",theme:"御所晨光，轻松返程",area:"京都御所 · 京都站",weather:"天气待查询",activities:[{id:"d4-a1",time:"09:00",title:"京都御所散步",detail:"行李寄存在酒店，轻装游览",tag:"自然 · 免费",cost:0},{id:"d4-a2",time:"11:30",title:"京都站午餐",detail:"拉面小路或车站便当",tag:"美食 · 返程便利",cost:180},{id:"d4-a3",time:"13:30",title:"取行李并返程",detail:"预留至少 45 分钟到站时间",tag:"交通 · 留有余量",cost:0}]}

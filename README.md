@@ -1,4 +1,40 @@
-# vinext-starter
+# 漫游策：查询与规划型旅行智能体
+
+## 工作流程
+
+```text
+用户需求
+  → 意图路由（新建 / 修改 / 问答 / 澄清）
+  → Skill Registry 按意图选出本轮 Skills
+  → prepare 阶段并行查询天气与联网来源
+  → 百炼模型根据工具结果生成结构化 TripPlan
+  → 后端归一化时间、预算、地图链接和来源
+  → validate 阶段检查时间顺序、路线细节、预算与非预订边界
+  → 网页展示并支持继续修改、撤销与只读分享
+```
+
+## Skill 编排
+
+| 意图 | 实际编排 |
+| --- | --- |
+| 新建行程 | collect-trip-needs → research-destination → compose-itinerary → validate-itinerary |
+| 修改行程 | revise-itinerary → validate-itinerary |
+| 旅行问答 | research-destination → validate-itinerary |
+| 分享 | share-trip 由服务端分享接口执行，不由模型生成令牌 |
+
+`research-destination` 复用了阿里云百炼成熟 Web Search 工作流：通过 Responses API 的 `web_search` 工具检索，并且只接受 API 返回在 `web_search_call.action.sources` 中的 URL。天气使用 Open-Meteo。路线、美食、预算、增量修改和分享属于产品特有规则，因此保留本项目的领域 Skill 与确定性运行时代码。
+
+社区旅行 Skill 未直接引入生产：OpenAI curated 目录暂无旅行规划 Skill；检索到的 `travel-qa` 示例面向评测并依赖 TomTom，已有接口 403 的公开失败记录。项目采用“成熟检索能力 + 自有旅行领域适配”的组合，而不是导入未经验证的提示词包。
+
+## 输出结构
+
+每天包含路线总览、餐饮建议和按时间排序的活动；每个活动包含具体游览动作、预计时长、交通衔接、菜品/餐饮建议、提示、费用与高德地图搜索链接。联网来源会随行程保存并展示，动态信息要求出发前复核。
+
+## 能力边界
+
+本应用只查询和规划，不执行预订、下单、占座或支付。
+
+---
 
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and

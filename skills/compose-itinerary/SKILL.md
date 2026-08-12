@@ -9,4 +9,6 @@ Read `references/trip-schema.md`. Group activities geographically, respect openi
 
 Prefer two or three strong daily anchors over dense checklists. Provide budget totals, unresolved issues, evidence freshness, and a short rationale. Run `$validate-itinerary` before presenting the result.
 
+For each day, provide a route summary, movement between areas, estimated duration, meal area, representative local dishes, practical tips, and per-stop map search links. A place-name list is not a usable itinerary.
+
 Keep the output within research and planning. Never claim that tickets, hotels, transport, restaurants, or activities have been booked, ordered, reserved, or paid for.
