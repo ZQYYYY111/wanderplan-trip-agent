@@ -9,6 +9,7 @@
   → prepare 阶段并行查询天气与联网来源
   → 百炼模型根据工具结果生成结构化 TripPlan
   → 后端归一化时间、预算、地图链接和来源
+  → enrich 阶段用高德 POI 与路径规划补充坐标、相邻路程和耗时
   → validate 阶段检查时间顺序、路线细节、预算与非预订边界
   → 网页展示并支持继续修改、撤销与只读分享
 ```
@@ -17,14 +18,14 @@
 
 | 意图 | 实际编排 |
 | --- | --- |
-| 新建行程 | collect-trip-needs → research-destination → compose-itinerary → validate-itinerary |
-| 修改行程 | revise-itinerary → validate-itinerary |
+| 新建行程 | collect-trip-needs → research-destination → discover-flyai-pois → compose-itinerary → optimize-map-route → validate-itinerary |
+| 修改行程 | revise-itinerary → optimize-map-route → validate-itinerary |
 | 旅行问答 | research-destination → validate-itinerary |
 | 分享 | share-trip 由服务端分享接口执行，不由模型生成令牌 |
 
-`research-destination` 复用了阿里云百炼成熟 Web Search 工作流：通过 Responses API 的 `web_search` 工具检索，并且只接受 API 返回在 `web_search_call.action.sources` 中的 URL。天气使用 Open-Meteo。路线、美食、预算、增量修改和分享属于产品特有规则，因此保留本项目的领域 Skill 与确定性运行时代码。
+`research-destination` 复用了阿里云百炼成熟 Web Search 工作流：通过 Responses API 的 `web_search` 工具检索，并且只接受 API 返回在 `web_search_call.action.sources` 中的 URL。天气使用 Open-Meteo。`discover-flyai-pois` 适配 MIT 许可的阿里 FlyAI `search-poi`，只保留查询字段并过滤预订入口；`optimize-map-route` 使用高德 Web 服务的 POI 搜索和路径规划 2.0。路线、美食、预算、增量修改和分享仍由产品领域 Skill 与确定性运行时代码控制。
 
-社区旅行 Skill 未直接引入生产：OpenAI curated 目录暂无旅行规划 Skill；检索到的 `travel-qa` 示例面向评测并依赖 TomTom，已有接口 403 的公开失败记录。项目采用“成熟检索能力 + 自有旅行领域适配”的组合，而不是导入未经验证的提示词包。
+Coze 与 SkillHub 页面未提供可审计的完整 Skill 包及许可证，因此没有复制其隐藏提示词。若获得作者导出的 SKILL.md 与许可证，可继续按同一注册表接入。
 
 ## 输出结构
 

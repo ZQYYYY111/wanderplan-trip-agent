@@ -1,7 +1,7 @@
 import type { TripPlan, Trace } from "../app/trip-data";
 
 export type AgentIntent = "new_trip" | "revise_trip" | "answer_trip" | "clarify";
-export type SkillPhase = "prepare" | "validate";
+export type SkillPhase = "prepare" | "enrich" | "validate";
 export type SkillContext = {
   input: string;
   intent: AgentIntent;

@@ -1,4 +1,6 @@
-export type Activity={id:string;time:string;title:string;detail:string;tag:string;cost:number;duration?:string;transport?:string;food?:string;tips?:string;mapUrl?:string};
+export type ActivityLocation={longitude:number;latitude:number;poiId?:string;address?:string;source:"amap"|"flyai"};
+export type ActivityRoute={mode:"walking"|"transit"|"estimated";distanceMeters:number;durationMinutes?:number;source:"amap"|"estimate"};
+export type Activity={id:string;time:string;title:string;detail:string;tag:string;cost:number;duration?:string;transport?:string;food?:string;tips?:string;mapUrl?:string;location?:ActivityLocation;routeFromPrevious?:ActivityRoute};
 export type TripDay={date:string;weekday:string;theme:string;area:string;weather:string;routeSummary?:string;meals?:string[];activities:Activity[]};
 export type TripSource={label:string;url:string;retrievedAt:string;freshness?:"verified"|"recent"|"reference"};
 export type Trace={name:string;label?:string;status?:"waiting"|"running"|"completed"|"warning";detail:string;code:string;durationMs?:number};
@@ -15,4 +17,4 @@ export const demoTrip:TripPlan={
  ],
  notices:["这是初始示例；发送消息后将由百炼 API 重新查询和规划。","本应用只做查询与规划，不执行预订、下单或支付。"],assumptions:["默认两位成人，偏好慢节奏与当地饮食。"],sources:[],budgetBreakdown:[{label:"住宿",amount:2800},{label:"餐饮",amount:1600},{label:"门票",amount:700},{label:"市内交通",amount:500},{label:"机动",amount:600}]
 };
-export const baseTrace:Trace[]=[{name:"collect-trip-needs",label:"理解旅行需求",status:"waiting",detail:"等待你提供目的地、日期、人数、预算和偏好",code:"ready"},{name:"research-destination",label:"查询目的地信息",status:"waiting",detail:"按需查询天气并核验动态信息",code:"tools ready"},{name:"compose-itinerary",label:"安排每日路线",status:"waiting",detail:"按区域、时间和节奏生成计划",code:"planner ready"},{name:"validate-itinerary",label:"检查行程可行性",status:"waiting",detail:"校验结构、时间、预算与信息边界",code:"guard ready"}];
+export const baseTrace:Trace[]=[{name:"collect-trip-needs",label:"理解旅行需求",status:"waiting",detail:"等待你提供目的地、日期、人数、预算和偏好",code:"ready"},{name:"research-destination",label:"查询目的地信息",status:"waiting",detail:"按需查询天气并核验动态信息",code:"tools ready"},{name:"discover-flyai-pois",label:"FlyAI 景点候选查询",status:"waiting",detail:"查询结构化景点候选；不可用时自动回退",code:"adapter ready"},{name:"compose-itinerary",label:"安排每日路线",status:"waiting",detail:"按区域、时间和节奏生成计划",code:"planner ready"},{name:"optimize-map-route",label:"高德地图路线增强",status:"waiting",detail:"生成地图链接，并在配置 Key 后核验地点和相邻路程",code:"map ready"},{name:"validate-itinerary",label:"检查行程可行性",status:"waiting",detail:"校验结构、时间、预算与信息边界",code:"guard ready"}];
