@@ -6,8 +6,10 @@ test("DeepSeek is the only runtime LLM provider and its key stays server-side",a
   const source=await readFile(new URL("../lib/llm.ts",import.meta.url),"utf8");
   const agent=await readFile(new URL("../lib/trip-agent.ts",import.meta.url),"utf8");
   assert.match(source,/process\.env\.DEEPSEEK_API_KEY/);
-  assert.match(source,/https:\/\/api\.deepseek\.com/);
+  assert.match(source,/https:\/\/api\.ofox\.ai\/v1/);
+  assert.match(source,/deepseek\/deepseek-v4-flash/);
   assert.match(source,/response_format/);
+  assert.match(source,/自动修复也失败/);
   assert.doesNotMatch(source,/sk-[A-Za-z0-9_-]{20,}/);
   assert.match(agent,/callModelJson/);
   assert.doesNotMatch(agent,/BAILIAN_|callBailian/);

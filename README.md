@@ -17,15 +17,15 @@ npm test
 
 ```bash
 DEEPSEEK_API_KEY=your-deepseek-api-key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-DEEPSEEK_ROUTER_MODEL=deepseek-chat
+DEEPSEEK_BASE_URL=https://api.ofox.ai/v1
+DEEPSEEK_MODEL=deepseek/deepseek-v4-flash
+DEEPSEEK_ROUTER_MODEL=deepseek/deepseek-v4-flash
 AMAP_WEB_SERVICE_KEY=optional-amap-key
 FLYAI_API_KEY=optional-flyai-key
 FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
 ```
 
-线上部署时，`DEEPSEEK_API_KEY`、`AMAP_WEB_SERVICE_KEY` 和 `FLYAI_API_KEY` 必须配置成服务端 Secret；不要写进前端、源码或 `.openai/hosting.json`。
+线上部署时，`DEEPSEEK_API_KEY`、`AMAP_WEB_SERVICE_KEY` 和 `FLYAI_API_KEY` 必须配置成服务端 Secret；不要写进前端、源码或 `.openai/hosting.json`。当前 `DEEPSEEK_*` 变量通过 OFOX 的 OpenAI 兼容接口调用 DeepSeek V4 Flash；变量名为了兼容现有部署保持不变。
 
 ## 执行流程
 

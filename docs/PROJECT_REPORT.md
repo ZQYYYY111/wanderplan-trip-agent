@@ -117,14 +117,16 @@ RAG 检索“雨天替代方案”，模型只修改第三天，并同步检查�
 | 配置 | 作用 | 默认值 |
 | --- | --- | --- |
 | `DEEPSEEK_API_KEY` | 服务端鉴权 Secret | 必填 |
-| `DEEPSEEK_BASE_URL` | OpenAI 兼容地址 | `https://api.deepseek.com` |
-| `DEEPSEEK_MODEL` | 行程规划模型 | `deepseek-chat` |
-| `DEEPSEEK_ROUTER_MODEL` | 意图路由模型 | `deepseek-chat` |
+| `DEEPSEEK_BASE_URL` | OpenAI 兼容地址 | `https://api.ofox.ai/v1` |
+| `DEEPSEEK_MODEL` | 行程规划模型 | `deepseek/deepseek-v4-flash` |
+| `DEEPSEEK_ROUTER_MODEL` | 意图路由模型 | `deepseek/deepseek-v4-flash` |
 
 `lib/llm.ts` 提供统一封装：
 
 - 调用 `/chat/completions`。
 - 使用 `response_format: json_object`。
+- 当兼容平台不支持 `response_format` 时自动回退到纯提示词 JSON 模式。
+- 当首轮内容不是合法 JSON 时，先提取平衡 JSON 对象，再进行一次低温度 JSON 修复请求。
 - 处理超时、鉴权、余额和限流错误。
 - 清理 Markdown fence 和思考标签。
 - 对少量常见 JSON 分隔符错误进行安全修复。
