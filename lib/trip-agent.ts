@@ -10,7 +10,7 @@ type RevisionResult={message:string;patch:RevisionPatch;needsClarification?:bool
 export type AgentResult=ModelResult&{usage:ModelUsage[];intent:AgentIntent;trace:Trace[];changes:TripChange[]};
 
 const plannerBase=`你是“漫游策”查询与规划智能体，只输出 JSON，不输出 Markdown。严格禁止执行或暗示已完成预订、下单、占座和支付；可以提供查询结果、候选建议和规划。动态事实无法核验时明确标注待核验。回答不能只有概览，必须做到用户拿着计划就知道每天按什么顺序走、怎么移动、吃什么、各环节大约多久和花多少钱。
-TripPlan 包含 id,title,destination,dates,travelers,budget,version,days,notices,assumptions,sources,budgetBreakdown。不要输出 shareToken、ownerToken 或任何访问凭证。day 包含 routeSummary 与 meals；activity 包含 id,time,title,detail,tag,cost,duration,transport,food,tips,mapUrl。detail 写2-4句具体游览动作和看点，不能只写景点名称。source 只能使用工具结果里真实提供的 URL，禁止编造 URL。
+TripPlan 包含 id,title,destination,dates,travelers,budget,version,days,notices,assumptions,sources,budgetBreakdown。不要输出 shareToken、ownerToken 或任何访问凭证。day 包含 routeSummary 与 meals；activity 包含 id,time,title,detail,tag,cost,duration,transport,food,tips,mapUrl。每天安排 3 个主要活动；detail 写1-2句具体游览动作和看点，不能只写景点名称；交通、用餐、时长和预算分别写入对应字段，不要在 detail 重复。notices、assumptions 各不超过 5 条。source 只能使用工具结果里真实提供的 URL，禁止编造 URL。
 每个 day 必须包含 date、weekday、theme、area、weather、activities；每个 activity.time 必须严格使用两位小时的 HH:MM，例如 09:00，不能写 9:00。
 输出 {"message":"...","trip":{...},"needsClarification":false}。`;
 
@@ -49,15 +49,15 @@ export async function runTripAgent(input:string,currentTrip:TripPlan|null,histor
 
  if(route.data.intent==="revise_trip"&&currentTrip){
   const revisionPrompt=`你是结构化行程修改器，只输出 JSON。不要重写未受影响的天。输出 {"message":"修改摘要","patch":{"title":可选,"destination":可选,"dates":可选,"travelers":可选,"budget":可选,"notices":可选,"assumptions":可选,"budgetBreakdown":可选,"dayChanges":[{"dayNumber":从1开始,"day":完整修改后当天}]},"needsClarification":false}。day 与 activity 字段遵守 TripPlan schema；保留未删除活动的原 id；时间使用 HH:MM。只查询与规划，不声称预订。`;
-  const revision=await callModelJson<RevisionResult>({model:getDeepSeekModel(),maxTokens:2600,temperature:0,timeoutMs:60_000,messages:[{role:"system",content:`${revisionPrompt}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user",content:JSON.stringify({userInput:input,currentTrip,recentConversation:history.slice(-4),toolResults:prepared.context.toolResults})}]});
+  const revision=await callModelJson<RevisionResult>({model:getDeepSeekModel(),maxTokens:2200,temperature:0,timeoutMs:45_000,messages:[{role:"system",content:`${revisionPrompt}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user",content:JSON.stringify({userInput:input,currentTrip,recentConversation:history.slice(-4),toolResults:prepared.context.toolResults})}]});
   usage.push(revision.usage);
   planned={message:revision.data.message,trip:applyRevisionPatch(currentTrip,revision.data.patch||{}),needsClarification:revision.data.needsClarification};
  }else{
   const planningTrip=route.data.intent==="new_trip"?null:currentTrip;
-  const planningRequest={model:getDeepSeekModel(),maxTokens:4200,temperature:.05,timeoutMs:75_000,messages:[{role:"system" as const,content:`${plannerBase}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user" as const,content:JSON.stringify({userInput:input,intent:route.data.intent,extractedConstraints:route.data,currentTrip:planningTrip,recentConversation:history.slice(-6),toolResults:prepared.context.toolResults})}]};
+  const planningRequest={model:getDeepSeekModel(),maxTokens:2600,temperature:0,timeoutMs:45_000,messages:[{role:"system" as const,content:`${plannerBase}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user" as const,content:JSON.stringify({userInput:input,intent:route.data.intent,extractedConstraints:route.data,currentTrip:planningTrip,recentConversation:history.slice(-6),toolResults:prepared.context.toolResults})}]};
   const response=await callModelJson<ModelResult>(planningRequest);planned=response.data;usage.push(response.usage);
   if(!planned.trip&&route.data.intent==="new_trip"){
-   const retry=await callModelJson<ModelResult>({...planningRequest,maxTokens:3600,temperature:0,timeoutMs:60_000,messages:[...planningRequest.messages,{role:"user",content:"首次响应缺少 trip。请严格按要求返回完整、可校验的 TripPlan JSON；不要改为解释性回答。"}]});
+   const retry=await callModelJson<ModelResult>({...planningRequest,maxTokens:2600,temperature:0,timeoutMs:45_000,messages:[...planningRequest.messages,{role:"user",content:"首次响应缺少 trip。请严格按要求返回完整、可校验的 TripPlan JSON；不要改为解释性回答。"}]});
    planned=retry.data;usage.push(retry.usage);
   }
  }
@@ -65,7 +65,7 @@ export async function runTripAgent(input:string,currentTrip:TripPlan|null,histor
  if(!planned.trip){if(route.data.intent==="clarify"||route.data.intent==="answer_trip")return{...planned,trip:currentTrip,usage,intent:route.data.intent,trace:prepared.trace,changes:[]};throw new Error("模型未返回可用行程")}
  let trip=attachResearchSources(normalize(planned.trip,currentTrip,route.data.intent),prepared.context.toolResults);
  let errors=validate(trip);
- if(errors.length){const repaired=await callModelJson<{trip:TripPlan}>({model:getDeepSeekModel(),maxTokens:3600,temperature:0,timeoutMs:45_000,messages:[{role:"system",content:`你是结构化行程修复器，只返回 {"trip":{...}}。只修复列出的校验错误，保留原有内容、稳定 ID、查询边界和“只查询规划、不预订”的原则。所有时间严格使用 HH:MM。`},{role:"user",content:JSON.stringify({errors,trip})}]});usage.push(repaired.usage);trip=attachResearchSources(normalize(repaired.data.trip,currentTrip,route.data.intent),prepared.context.toolResults);errors=validate(trip)}
+ if(errors.length){const repaired=await callModelJson<{trip:TripPlan}>({model:getDeepSeekModel(),maxTokens:2600,temperature:0,timeoutMs:40_000,messages:[{role:"system",content:`你是结构化行程修复器，只返回 {"trip":{...}}。只修复列出的校验错误，保留原有内容、稳定 ID、查询边界和“只查询规划、不预订”的原则。所有时间严格使用 HH:MM。`},{role:"user",content:JSON.stringify({errors,trip})}]});usage.push(repaired.usage);trip=attachResearchSources(normalize(repaired.data.trip,currentTrip,route.data.intent),prepared.context.toolResults);errors=validate(trip)}
  if(errors.length)throw new Error(`行程校验失败：${errors.slice(0,3).join("；")}`);
  const enriched=await runSkillPhase(selected,"enrich",{...prepared.context,currentTrip:trip});trip=enriched.context.currentTrip||trip;errors=validate(trip);
  if(errors.length)throw new Error(`地图增强后校验失败：${errors.slice(0,3).join("；")}`);
