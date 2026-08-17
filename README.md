@@ -1,6 +1,6 @@
 # 漫游策：查询与规划型旅行智能体
 
-漫游策是一个可分享的 Web 旅行规划智能体。用户用自然语言提供目的地、日期、人数、预算和偏好，后端调用 DeepSeek API 生成结构化行程，并通过独立 Skills 补充天气、风险、美食、景点候选、地图路线、校验和只读分享。
+漫游策是一个可分享的 Web 旅行规划智能体。用户用自然语言提供目的地、日期、人数、预算和偏好，后端调用 DeepSeek API 生成结构化行程，并通过独立 Skills 与轻量 RAG 补充天气、风险、美食、景点候选、地图路线、校验和只读分享。
 
 产品只提供查询和规划，不执行预订、下单、占座或支付。
 
@@ -33,7 +33,7 @@ FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
 用户输入
   -> DeepSeek 意图路由
   -> Skill Registry 选择本轮 Skills
-  -> prepare：人员约束、天气、风险、FlyAI POI、美食规则与搜索入口
+  -> prepare：人员约束、RAG 知识检索、天气、风险、FlyAI POI、美食规则与搜索入口
   -> DeepSeek 生成结构化 TripPlan
   -> normalize：时间、预算、ID、餐饮与地图链接归一化
   -> enrich：高德 POI 与相邻路线增强
@@ -45,9 +45,13 @@ FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
 
 | 意图 | 编排 |
 | --- | --- |
-| 新建行程 | collect-trip-needs → assess-trip-risks → research-destination → discover-flyai-pois → plan-local-food → compose-itinerary → optimize-map-route → validate-itinerary |
-| 修改行程 | assess-trip-risks → revise-itinerary → optimize-map-route → validate-itinerary |
-| 旅行问答 | assess-trip-risks → research-destination → discover-flyai-pois → plan-local-food → validate-itinerary |
+| 新建行程 | collect-trip-needs → assess-trip-risks → retrieve-travel-knowledge → research-destination → discover-flyai-pois → plan-local-food → compose-itinerary → optimize-map-route → validate-itinerary |
+| 修改行程 | assess-trip-risks → retrieve-travel-knowledge → revise-itinerary → optimize-map-route → validate-itinerary |
+| 旅行问答 | assess-trip-risks → retrieve-travel-knowledge → research-destination → discover-flyai-pois → plan-local-food → validate-itinerary |
 | 分享 | share-trip 由服务端分享接口执行，不让模型生成令牌 |
 
 详细架构、超时原因、Skill 来源和部署说明见 [项目报告](docs/PROJECT_REPORT.md)。
+
+## RAG 说明
+
+RAG 知识库位于 `knowledge/travel-knowledge.ts`，内容为原创、版本化的旅行规划原则。`lib/rag.ts` 使用确定性的加权词法与中文双字片段检索，运行时不加载本地模型；检索结果由 `retrieve-travel-knowledge` Skill 注入 DeepSeek 上下文。动态事实仍以天气、FlyAI、高德和用户确认信息为准。

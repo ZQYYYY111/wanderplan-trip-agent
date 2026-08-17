@@ -1,0 +1,4 @@
+interface:
+  display_name: "旅行知识检索"
+  short_description: "从项目旅行知识库检索路线节奏预算美食风险等相关规划原则"
+  default_prompt: "Use $retrieve-travel-knowledge to retrieve relevant planning guidance before composing the itinerary."
