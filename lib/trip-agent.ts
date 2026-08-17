@@ -58,10 +58,11 @@ export async function runTripAgent(input:string,currentTrip:TripPlan|null,histor
   if(route.data.intent==="new_trip"&&route.data.destination&&route.data.days&&route.data.days<=3){
    const destination=route.data.destination;const totalDays=route.data.days;const startDate=route.data.startDate;const requestedBudget=route.data.budget||0;const travelers=route.data.travelers;
    const dayPrompt=`你是旅行行程单日规划器，只返回紧凑 JSON：{"day":{"date":"","weekday":"","theme":"","area":"","weather":"","routeSummary":"","meals":["午餐：菜品、片区、人均预算","晚餐：菜品、片区、人均预算"],"activities":[{"id":"","time":"HH:MM","title":"","detail":"一句具体游览动作和看点","tag":"","cost":0,"duration":"","transport":"","food":"","tips":"","mapUrl":""}]}}。恰好生成 3 个主要活动，按时间和地理顺序排列；适合用户同行人和步行限制；动态信息标待核验；只查询规划，不预订。`;
-   const dayResponses=await Promise.all(Array.from({length:totalDays},(_,index)=>callModelJson<{day:TripDay}>({
-    model:getDeepSeekModel(),maxTokens:1000,temperature:0,timeoutMs:38_000,
+   const dayResponses:Array<{data:{day:TripDay};usage:ModelUsage}>=[];
+   for(let index=0;index<totalDays;index+=1){dayResponses.push(await callModelJson<{day:TripDay}>({
+    model:getDeepSeekModel(),maxTokens:900,temperature:0,timeoutMs:32_000,
     messages:[{role:"system",content:`${dayPrompt}\n\n相关 Skills：\n${skillPrompt(selected)}`},{role:"user",content:JSON.stringify({userInput:input,destination,dayNumber:index+1,totalDays,startDate,budget:requestedBudget,travelers,toolResults:prepared.context.toolResults})}]
-   })));
+   }))}
    if(dayResponses.some(response=>!response.data?.day?.activities?.length))throw new Error("DeepSeek 单日规划结果不完整，请重试");
    usage.push(...dayResponses.map(response=>response.usage));
    const month=input.match(/\d{1,2}月/)?.[0];
