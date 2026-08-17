@@ -66,7 +66,7 @@ RAG 检索“雨天替代方案”，模型只修改第三天，并同步检查�
   -> React / Vinext 前端
   -> POST /api/agent
   -> Trip Agent Orchestrator
-       -> DeepSeek 意图路由
+       -> 确定性意图与约束解析（不调用模型）
        -> Skill Registry
             -> 需求与风险 Skills
             -> RAG 旅行知识检索
@@ -119,7 +119,7 @@ RAG 检索“雨天替代方案”，模型只修改第三天，并同步检查�
 | `DEEPSEEK_API_KEY` | 服务端鉴权 Secret | 必填 |
 | `DEEPSEEK_BASE_URL` | OpenAI 兼容地址 | `https://api.ofox.ai/v1` |
 | `DEEPSEEK_MODEL` | 行程规划模型 | `deepseek/deepseek-v4-flash` |
-| `DEEPSEEK_ROUTER_MODEL` | 意图路由模型 | `deepseek/deepseek-v4-flash` |
+| `DEEPSEEK_ROUTER_MODEL` | 兼容保留，当前默认路由不调用模型 | `deepseek/deepseek-v4-flash` |
 
 `lib/llm.ts` 提供统一封装：
 
@@ -229,7 +229,7 @@ assess-trip-risks
 
 ### 7.4 为什么暂不使用向量数据库
 
-DeepSeek 当前在本项目中承担生成与路由，项目没有独立 Embedding API。为了坚持“只用 API 模型、不运行本地模型”，同时控制同步请求时延，第一版 RAG 不在本地运行嵌入模型，也不额外引入向量数据库。
+DeepSeek 当前在本项目中承担行程生成与结构化修复；意图路由使用确定性字段解析，项目没有独立 Embedding API。为了坚持“只用 API 模型、不运行本地模型”，同时控制同步请求时延，第一版 RAG 不在本地运行嵌入模型，也不额外引入向量数据库。
 
 当前方案适合几十至数百条短知识。知识量扩大后，可以升级为：
 
@@ -363,7 +363,7 @@ TripPlan
 
 处理措施：
 
-- 生成和路由切换为 DeepSeek API。
+- 生成切换为 DeepSeek API，路由改为确定性解析以减少一次串行模型调用。
 - 移除额外的百炼联网模型调用。
 - 将实时查询拆分给天气、FlyAI 和高德工具。
 - 为模型阶段设置独立超时。

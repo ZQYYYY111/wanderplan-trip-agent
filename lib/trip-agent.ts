@@ -1,15 +1,14 @@
 import {callModelJson,getDeepSeekModel,type ModelUsage} from "./llm";
 import {runSkillPhase,selectSkills,skillPrompt} from "./skill-registry";
+import {routeTripRequest} from "./trip-router";
 import type {AgentIntent,SkillContext} from "../skills/runtime-types";
 import type {TripChange,TripDay,TripPlan,Trace} from "../app/trip-data";
 
-type RouterResult={intent:AgentIntent;destination:string|null;days:number|null;startDate:string|null;travelers:number|null;budget:number|null};
 type ModelResult={message:string;trip:TripPlan|null;needsClarification?:boolean};
 type RevisionPatch={title?:string;destination?:string;dates?:string;travelers?:string;budget?:number;notices?:string[];assumptions?:string[];budgetBreakdown?:Array<{label:string;amount:number}>;dayChanges?:Array<{dayNumber:number;day:TripDay}>};
 type RevisionResult={message:string;patch:RevisionPatch;needsClarification?:boolean};
 export type AgentResult=ModelResult&{usage:ModelUsage[];intent:AgentIntent;trace:Trace[];changes:TripChange[]};
 
-const routerPrompt=`你是旅行规划意图路由器，只返回 JSON。当前日期 ${new Date().toISOString().slice(0,10)}。intent 只能是 new_trip、revise_trip、answer_trip、clarify。忠实提取 destination、days、startDate(YYYY-MM-DD)、travelers、budget；未知填 null。中文地名保持中文。用户想预订或购买时仍归入 answer_trip，因为本产品只提供查询和规划。`;
 const plannerBase=`你是“漫游策”查询与规划智能体，只输出 JSON，不输出 Markdown。严格禁止执行或暗示已完成预订、下单、占座和支付；可以提供查询结果、候选建议和规划。动态事实无法核验时明确标注待核验。回答不能只有概览，必须做到用户拿着计划就知道每天按什么顺序走、怎么移动、吃什么、各环节大约多久和花多少钱。
 TripPlan 包含 id,title,destination,dates,travelers,budget,version,days,notices,assumptions,sources,budgetBreakdown。不要输出 shareToken、ownerToken 或任何访问凭证。day 包含 routeSummary 与 meals；activity 包含 id,time,title,detail,tag,cost,duration,transport,food,tips,mapUrl。detail 写2-4句具体游览动作和看点，不能只写景点名称。source 只能使用工具结果里真实提供的 URL，禁止编造 URL。
 每个 day 必须包含 date、weekday、theme、area、weather、activities；每个 activity.time 必须严格使用两位小时的 HH:MM，例如 09:00，不能写 9:00。
@@ -41,11 +40,11 @@ function applyRevisionPatch(current:TripPlan,patch:RevisionPatch){
 }
 
 export async function runTripAgent(input:string,currentTrip:TripPlan|null,history:Array<{role:string;text:string}>=[]):Promise<AgentResult>{
- const route=await callModelJson<RouterResult>({model:getDeepSeekModel("router"),maxTokens:240,temperature:0,timeoutMs:25_000,messages:[{role:"system",content:routerPrompt},{role:"user",content:JSON.stringify({input,currentDestination:currentTrip?.destination||null,currentVersion:currentTrip?.version||null})}]});
+ const route={data:routeTripRequest(input,currentTrip)};
  const selected=selectSkills(route.data.intent);
  const initial:SkillContext={input,intent:route.data.intent,currentTrip,destination:route.data.destination||currentTrip?.destination||null,startDate:route.data.startDate,toolResults:{}};
  const prepared=await runSkillPhase(selected,"prepare",initial);
- const usage:ModelUsage[]=[route.usage];
+ const usage:ModelUsage[]=[];
  let planned:ModelResult;
 
  if(route.data.intent==="revise_trip"&&currentTrip){

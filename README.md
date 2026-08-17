@@ -31,7 +31,7 @@ FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
 
 ```text
 用户输入
-  -> DeepSeek 意图路由
+  -> 确定性意图与约束解析（不调用模型）
   -> Skill Registry 选择本轮 Skills
   -> prepare：人员约束、RAG 知识检索、天气、风险、FlyAI POI、美食规则与搜索入口
   -> DeepSeek 生成结构化 TripPlan
