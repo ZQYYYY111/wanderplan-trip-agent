@@ -10,7 +10,7 @@ type RevisionResult={message:string;patch:RevisionPatch;needsClarification?:bool
 export type AgentResult=ModelResult&{usage:ModelUsage[];intent:AgentIntent;trace:Trace[];changes:TripChange[]};
 
 const plannerBase=`你是“漫游策”查询与规划智能体，只输出 JSON，不输出 Markdown。严格禁止执行或暗示已完成预订、下单、占座和支付；可以提供查询结果、候选建议和规划。动态事实无法核验时明确标注待核验。回答不能只有概览，必须做到用户拿着计划就知道每天按什么顺序走、怎么移动、吃什么、各环节大约多久和花多少钱。
-TripPlan 包含 id,title,destination,dates,travelers,budget,version,days,notices,assumptions,sources,budgetBreakdown。不要输出 shareToken、ownerToken 或任何访问凭证。day 包含 routeSummary 与 meals；activity 包含 id,time,title,detail,tag,cost,duration,transport,food,tips,mapUrl。每天安排 3 个主要活动；detail 写1-2句具体游览动作和看点，不能只写景点名称；交通、用餐、时长和预算分别写入对应字段，不要在 detail 重复。notices、assumptions 各不超过 5 条。source 只能使用工具结果里真实提供的 URL，禁止编造 URL。
+TripPlan 包含 id,title,destination,dates,travelers,budget,version,days,notices,assumptions,sources,budgetBreakdown。不要输出 shareToken、ownerToken 或任何访问凭证。day 包含 routeSummary 与 meals；activity 包含 id,time,title,detail,tag,cost,duration,transport,food,tips,mapUrl。每天安排 3 个主要活动；detail 用1句写具体游览动作和看点，不能只写景点名称；交通、用餐、时长和预算分别写入对应字段，不要在 detail 重复。每天 meals 写午餐、晚餐各1条并包含菜品和人均预算。notices、assumptions 各不超过 3 条。source 只能使用工具结果里真实提供的 URL，禁止编造 URL。输出紧凑 JSON，不要缩进。
 每个 day 必须包含 date、weekday、theme、area、weather、activities；每个 activity.time 必须严格使用两位小时的 HH:MM，例如 09:00，不能写 9:00。
 输出 {"message":"...","trip":{...},"needsClarification":false}。`;
 
@@ -54,10 +54,10 @@ export async function runTripAgent(input:string,currentTrip:TripPlan|null,histor
   planned={message:revision.data.message,trip:applyRevisionPatch(currentTrip,revision.data.patch||{}),needsClarification:revision.data.needsClarification};
  }else{
   const planningTrip=route.data.intent==="new_trip"?null:currentTrip;
-  const planningRequest={model:getDeepSeekModel(),maxTokens:2600,temperature:0,timeoutMs:45_000,messages:[{role:"system" as const,content:`${plannerBase}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user" as const,content:JSON.stringify({userInput:input,intent:route.data.intent,extractedConstraints:route.data,currentTrip:planningTrip,recentConversation:history.slice(-6),toolResults:prepared.context.toolResults})}]};
+  const planningRequest={model:getDeepSeekModel(),maxTokens:1800,temperature:0,timeoutMs:42_000,messages:[{role:"system" as const,content:`${plannerBase}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user" as const,content:JSON.stringify({userInput:input,intent:route.data.intent,extractedConstraints:route.data,currentTrip:planningTrip,recentConversation:history.slice(-6),toolResults:prepared.context.toolResults})}]};
   const response=await callModelJson<ModelResult>(planningRequest);planned=response.data;usage.push(response.usage);
   if(!planned.trip&&route.data.intent==="new_trip"){
-   const retry=await callModelJson<ModelResult>({...planningRequest,maxTokens:2600,temperature:0,timeoutMs:45_000,messages:[...planningRequest.messages,{role:"user",content:"首次响应缺少 trip。请严格按要求返回完整、可校验的 TripPlan JSON；不要改为解释性回答。"}]});
+   const retry=await callModelJson<ModelResult>({...planningRequest,maxTokens:1800,temperature:0,timeoutMs:42_000,messages:[...planningRequest.messages,{role:"user",content:"首次响应缺少 trip。请严格按要求返回完整、可校验的 TripPlan JSON；不要改为解释性回答。"}]});
    planned=retry.data;usage.push(retry.usage);
   }
  }
