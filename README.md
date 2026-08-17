@@ -17,15 +17,15 @@ npm test
 
 ```bash
 DEEPSEEK_API_KEY=your-deepseek-api-key
-DEEPSEEK_BASE_URL=https://api.ofox.ai/v1
-DEEPSEEK_MODEL=deepseek/deepseek-v4-flash
-DEEPSEEK_ROUTER_MODEL=deepseek/deepseek-v4-flash
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_ROUTER_MODEL=deepseek-v4-flash
 AMAP_WEB_SERVICE_KEY=optional-amap-key
 FLYAI_API_KEY=optional-flyai-key
 FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
 ```
 
-线上部署时，`DEEPSEEK_API_KEY`、`AMAP_WEB_SERVICE_KEY` 和 `FLYAI_API_KEY` 必须配置成服务端 Secret；不要写进前端、源码或 `.openai/hosting.json`。当前 `DEEPSEEK_*` 变量通过 OFOX 的 OpenAI 兼容接口调用 DeepSeek V4 Flash；变量名为了兼容现有部署保持不变。
+线上部署时，`DEEPSEEK_API_KEY`、`AMAP_WEB_SERVICE_KEY` 和 `FLYAI_API_KEY` 必须配置成服务端 Secret；不要写进前端、源码或 `.openai/hosting.json`。当前 `DEEPSEEK_*` 变量直接调用 DeepSeek 官方 API。
 
 ## 执行流程
 
@@ -41,7 +41,7 @@ FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
   -> 网页展示、继续修改、撤销或生成只读分享链接
 ```
 
-为适配托管请求时限，1–3 天的新行程会拆成逐日短请求调用同一个 DeepSeek API，再由服务端组装并统一校验；这不是本地模型，也不会减少 RAG、路线、美食和风险 Skills。OFOX 对同一 Key 的并发请求可能排队，因此当前采用短请求串行执行。
+为保证天数准确并控制单次 JSON 大小，1–3 天的新行程会拆成逐日短请求调用同一个 DeepSeek 官方 API，再由服务端组装并统一校验；这不是本地模型，也不会减少 RAG、路线、美食和风险 Skills。
 
 ## Skill 编排
 

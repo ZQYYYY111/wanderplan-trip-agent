@@ -1,5 +1,5 @@
-const DEFAULT_BASE_URL = "https://api.ofox.ai/v1";
-const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
+const DEFAULT_BASE_URL = "https://api.deepseek.com";
+const DEFAULT_MODEL = "deepseek-v4-flash";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -139,6 +139,7 @@ export async function callModelJson<T>(options: ModelOptions): Promise<{ data: T
     model,
     messages: options.messages,
     response_format: { type: "json_object" },
+    thinking: { type: "disabled" },
     temperature: options.temperature ?? 0.15,
     max_tokens: options.maxTokens ?? 4200,
     stream: false,
@@ -178,6 +179,7 @@ export async function callModelJson<T>(options: ModelOptions): Promise<{ data: T
         { role: "user", content },
       ],
       response_format: { type: "json_object" },
+      thinking: { type: "disabled" },
       temperature: 0,
       max_tokens: Math.min(Math.max(options.maxTokens ?? 4200, 1200), 8192),
       stream: false,

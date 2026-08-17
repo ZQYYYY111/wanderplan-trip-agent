@@ -117,9 +117,9 @@ RAG 检索“雨天替代方案”，模型只修改第三天，并同步检查�
 | 配置 | 作用 | 默认值 |
 | --- | --- | --- |
 | `DEEPSEEK_API_KEY` | 服务端鉴权 Secret | 必填 |
-| `DEEPSEEK_BASE_URL` | OpenAI 兼容地址 | `https://api.ofox.ai/v1` |
-| `DEEPSEEK_MODEL` | 行程规划模型 | `deepseek/deepseek-v4-flash` |
-| `DEEPSEEK_ROUTER_MODEL` | 兼容保留，当前默认路由不调用模型 | `deepseek/deepseek-v4-flash` |
+| `DEEPSEEK_BASE_URL` | DeepSeek 官方地址 | `https://api.deepseek.com` |
+| `DEEPSEEK_MODEL` | 行程规划模型 | `deepseek-v4-flash` |
+| `DEEPSEEK_ROUTER_MODEL` | 兼容保留，当前默认路由不调用模型 | `deepseek-v4-flash` |
 
 `lib/llm.ts` 提供统一封装：
 
@@ -364,7 +364,7 @@ TripPlan
 处理措施：
 
 - 生成切换为 DeepSeek API，路由改为确定性解析以减少一次串行模型调用。
-- 1–3 天的新行程拆成逐日短请求，再由服务端组装 TripPlan，避免长 JSON 单次生成超过托管连接窗口；考虑 OFOX 同 Key 并发排队，当前使用串行短请求。
+- 1–3 天的新行程拆成逐日短请求，再由服务端组装 TripPlan，避免长 JSON 单次生成影响天数准确性。
 - 移除额外的百炼联网模型调用。
 - 将实时查询拆分给天气、FlyAI 和高德工具。
 - 为模型阶段设置独立超时。
