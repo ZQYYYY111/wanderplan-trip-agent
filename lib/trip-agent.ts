@@ -15,6 +15,21 @@ TripPlan 包含 id,title,destination,dates,travelers,budget,version,days,notices
 输出 {"message":"...","trip":{...},"needsClarification":false}。`;
 
 function mapSearchUrl(destination:string,title:string){return `https://www.amap.com/search?query=${encodeURIComponent(`${destination} ${title}`)}`}
+function compactModelTools(toolResults:Record<string,unknown>){
+ const risk=toolResults.riskAssessment as {flags?:string[]}|undefined;
+ const rag=toolResults.ragContext as {hits?:Array<{title?:string;content?:string}>}|undefined;
+ const weather=toolResults.weather as {status?:string;reason?:string;forecast?:{current?:unknown;daily?:Record<string,unknown>}}|undefined;
+ const pois=(toolResults.poiCandidates as Array<{name?:string;address?:string;category?:string;description?:string}>|undefined)||[];
+ const food=toolResults.foodResearch as {preference?:string;planningRules?:string[]}|undefined;
+ const daily=weather?.forecast?.daily;
+ return{
+  risks:risk?.flags?.slice(0,4)||[],
+  knowledge:rag?.hits?.slice(0,3).map(hit=>({title:hit.title,guidance:hit.content?.slice(0,220)}))||[],
+  weather:weather?{status:weather.status,reason:weather.reason,current:weather.forecast?.current,daily:daily?Object.fromEntries(Object.entries(daily).map(([key,value])=>[key,Array.isArray(value)?value.slice(0,3):value])):undefined}:undefined,
+  pois:pois.slice(0,6).map(poi=>({name:poi.name,address:poi.address,category:poi.category,description:poi.description?.slice(0,100)})),
+  food:food?{preference:food.preference,rules:food.planningRules?.slice(0,3)}:undefined,
+ };
+}
 function attachResearchSources(trip:TripPlan,toolResults:Record<string,unknown>){const research=toolResults.webResearch as {sources?:Array<{url:string;query?:string;kind?:"evidence"|"search"}>}|undefined;const retrievedAt=new Date().toISOString();const discovered=(research?.sources||[]).filter(source=>/^https?:\/\//.test(source.url)).map(source=>{let host="查询来源";try{host=new URL(source.url).hostname.replace(/^www\./,"")}catch{host="查询来源"}return{label:source.query?`${source.kind==="search"?"搜索入口":"来源"} · ${source.query}`:host,url:source.url,retrievedAt,freshness:source.kind==="search"?"reference" as const:"recent" as const}});const combined=[...trip.sources,...discovered];trip.sources=combined.filter((source,index,list)=>list.findIndex(other=>other.url===source.url)===index).slice(0,12);return trip}
 
 function normalize(raw:TripPlan,current:TripPlan|null,intent:AgentIntent){
@@ -57,11 +72,12 @@ export async function runTripAgent(input:string,currentTrip:TripPlan|null,histor
   const planningRequest={model:getDeepSeekModel(),maxTokens:1800,temperature:0,timeoutMs:42_000,messages:[{role:"system" as const,content:`${plannerBase}\n\n本轮实际加载的 Skills：\n${skillPrompt(selected)}`},{role:"user" as const,content:JSON.stringify({userInput:input,intent:route.data.intent,extractedConstraints:route.data,currentTrip:planningTrip,recentConversation:history.slice(-6),toolResults:prepared.context.toolResults})}]};
   if(route.data.intent==="new_trip"&&route.data.destination&&route.data.days&&route.data.days<=3){
    const destination=route.data.destination;const totalDays=route.data.days;const startDate=route.data.startDate;const requestedBudget=route.data.budget||0;const travelers=route.data.travelers;
+   const planningContext=compactModelTools(prepared.context.toolResults);
    const dayPrompt=`你是旅行行程单日规划器，只返回紧凑 JSON：{"day":{"date":"","weekday":"","theme":"","area":"","weather":"","routeSummary":"","meals":["午餐：菜品、片区、人均预算","晚餐：菜品、片区、人均预算"],"activities":[{"id":"","time":"HH:MM","title":"","detail":"一句具体游览动作和看点","tag":"","cost":0,"duration":"","transport":"","food":"","tips":"","mapUrl":""}]}}。恰好生成 3 个主要活动，按时间和地理顺序排列；适合用户同行人和步行限制；动态信息标待核验；只查询规划，不预订。`;
    const dayResponses:Array<{data:{day:TripDay};usage:ModelUsage}>=[];
    for(let index=0;index<totalDays;index+=1){dayResponses.push(await callModelJson<{day:TripDay}>({
     model:getDeepSeekModel(),maxTokens:900,temperature:0,timeoutMs:32_000,
-    messages:[{role:"system",content:`${dayPrompt}\n\n相关 Skills：\n${skillPrompt(selected)}`},{role:"user",content:JSON.stringify({userInput:input,destination,dayNumber:index+1,totalDays,startDate,budget:requestedBudget,travelers,toolResults:prepared.context.toolResults})}]
+    messages:[{role:"system",content:dayPrompt},{role:"user",content:JSON.stringify({userInput:input,destination,dayNumber:index+1,totalDays,startDate,budget:requestedBudget,travelers,planningContext})}]
    }))}
    if(dayResponses.some(response=>!response.data?.day?.activities?.length))throw new Error("DeepSeek 单日规划结果不完整，请重试");
    usage.push(...dayResponses.map(response=>response.usage));
