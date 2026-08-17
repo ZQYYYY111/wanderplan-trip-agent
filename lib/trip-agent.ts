@@ -79,10 +79,11 @@ export async function runTripAgent(input:string,currentTrip:TripPlan|null,histor
     model:getDeepSeekModel(),maxTokens:900,temperature:0,timeoutMs:32_000,
     messages:[{role:"system",content:dayPrompt},{role:"user",content:JSON.stringify({userInput:input,destination,dayNumber:index+1,totalDays,startDate,budget:requestedBudget,travelers,planningContext})}]
    }))}
-   if(dayResponses.some(response=>!response.data?.day?.activities?.length))throw new Error("DeepSeek 单日规划结果不完整，请重试");
+   const generatedDays=dayResponses.map(response=>response.data?.day||response.data as unknown as TripDay);
+   if(generatedDays.some(day=>!day?.activities?.length))throw new Error("DeepSeek 单日规划结果不完整，请重试");
    usage.push(...dayResponses.map(response=>response.usage));
    const month=input.match(/\d{1,2}月/)?.[0];
-   planned={message:`已按“${destination}${totalDays}天”生成逐日路线，并结合同行人、预算和偏好控制节奏。`,trip:{id:"",title:`${destination}${totalDays}天·可调整旅行计划`,destination,dates:startDate?`${startDate} 起，共 ${totalDays} 天`:month?`${month}，共 ${totalDays} 天（具体日期待确认）`:`共 ${totalDays} 天（日期待确认）`,travelers:travelers?`${travelers} 人`:"人数待确认",budget:requestedBudget,version:1,days:dayResponses.map(response=>response.data.day),notices:["开放时间、票价与临时管制请在出发前再次核验。","本计划只提供查询与规划，不执行预订、下单或支付。"],assumptions:["未明确的住宿位置和往返大交通按待确认处理。"],sources:[],budgetBreakdown:requestedBudget?[{label:"住宿与往返交通",amount:Math.round(requestedBudget*.45)},{label:"活动与餐饮",amount:Math.round(requestedBudget*.4)},{label:"机动预算",amount:requestedBudget-Math.round(requestedBudget*.45)-Math.round(requestedBudget*.4)}]:[]}};
+   planned={message:`已按“${destination}${totalDays}天”生成逐日路线，并结合同行人、预算和偏好控制节奏。`,trip:{id:"",title:`${destination}${totalDays}天·可调整旅行计划`,destination,dates:startDate?`${startDate} 起，共 ${totalDays} 天`:month?`${month}，共 ${totalDays} 天（具体日期待确认）`:`共 ${totalDays} 天（日期待确认）`,travelers:travelers?`${travelers} 人`:"人数待确认",budget:requestedBudget,version:1,days:generatedDays,notices:["开放时间、票价与临时管制请在出发前再次核验。","本计划只提供查询与规划，不执行预订、下单或支付。"],assumptions:["未明确的住宿位置和往返大交通按待确认处理。"],sources:[],budgetBreakdown:requestedBudget?[{label:"住宿与往返交通",amount:Math.round(requestedBudget*.45)},{label:"活动与餐饮",amount:Math.round(requestedBudget*.4)},{label:"机动预算",amount:requestedBudget-Math.round(requestedBudget*.45)-Math.round(requestedBudget*.4)}]:[]}};
   }else{
    const response=await callModelJson<ModelResult>(planningRequest);planned=response.data;usage.push(response.usage);
   }
