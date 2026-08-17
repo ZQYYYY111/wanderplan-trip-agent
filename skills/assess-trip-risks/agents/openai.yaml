@@ -1,0 +1,4 @@
+interface:
+  display_name: "旅行风险与准备"
+  short_description: "结合同行人员、目的地、天气和行动限制检查旅行风险与准备事项"
+  default_prompt: "Use $assess-trip-risks to check traveler-specific risks and preparation needs."

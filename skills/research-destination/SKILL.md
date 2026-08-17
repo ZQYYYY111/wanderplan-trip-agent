@@ -5,10 +5,10 @@ description: Research current destination facts for itinerary planning, includin
 
 # Research Destination
 
-Read `references/source-policy.md` before retrieving current facts. Search authoritative sources first, record the source URL and retrieval time, and distinguish facts from estimates.
+Read `references/source-policy.md` before retrieving current facts. Prefer structured provider results, record the retrieval time, and distinguish verified facts, estimates, and search-entry links.
 
-Reuse the Alibaba Cloud Model Studio web-search workflow: call the Responses API with `web_search`, extract URLs only from returned `web_search_call.action.sources`, and pass both the research summary and source list to the planning Skill. This is an application adapter of the mature `aliyun-model-studio-cli` search workflow; do not invoke a local CLI from the hosted request path.
+Use Open-Meteo for near-term forecast data. Generate transparent Baidu and Amap search-entry links for facts that still need user verification. A search result URL is not evidence: label it as a search entry and never claim it proves opening hours, price, availability, or policy.
 
-Return normalized place candidates with coordinates, duration, cost range, hours, reservation need, evidence, and freshness. Mark unavailable data as unknown instead of guessing.
+Use FlyAI and Amap Skills for normalized place candidates and route data. Mark unavailable data as unknown instead of guessing.
 
 This Skill is query-only. It may explain whether advance registration is required, but it must never book, place an order, reserve a seat, or collect payment.

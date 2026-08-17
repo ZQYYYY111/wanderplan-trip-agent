@@ -1,0 +1,4 @@
+interface:
+  display_name: "本地美食路线"
+  short_description: "按片区、口味、预算和行动路线生成可执行餐饮建议与搜索入口"
+  default_prompt: "Use $plan-local-food to add local dishes and meal areas to this itinerary."

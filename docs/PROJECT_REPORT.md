@@ -2,211 +2,135 @@
 
 ## 1. 项目定位
 
-漫游策是一个“查询与规划型”旅行智能体 Web 应用。它面向普通用户和同行朋友，核心目标是把一句自然语言旅行需求转成可阅读、可修改、可分享的结构化行程。
+漫游策是一个可交流、可修改、可分享的旅行规划 Web Agent。用户输入一句自然语言需求，系统输出每天可执行的时间线、区域路线、交通衔接、美食建议、预算拆分、风险提示、地图搜索链接和需要复核的动态信息。
 
-应用明确不做预订能力：不下单、不占座、不支付、不承诺库存或价格。所有动态信息都以查询、建议和待复核的方式呈现。
+边界非常明确：只查询和规划，不预订、不占座、不下单、不支付，也不把候选价格或营业状态描述为已确认。
 
-## 2. 用户体验流程
+## 2. 用户流程
 
-用户进入网页后，会看到一个对话区、一个行程时间轴和一个规划过程面板。
+1. 用户输入“9月带3个朋友去贵州玩3天，预算3000元，喜欢美食”。
+2. 意图路由识别为新建行程，并提取目的地、天数、人数和预算。
+3. Skill Registry 选择本轮能力，先准备天气、风险、景点和餐饮材料。
+4. DeepSeek 生成符合 TripPlan Schema 的完整 JSON。
+5. 后端归一化字段，补充高德链接，校验时间、预算和内容边界。
+6. 网页显示行程与每个 Skill 的执行记录。
+7. 用户可以继续说“每天最多三个活动”“第三天改室内”“预算降1000元”，系统保留未受影响部分并生成差异。
+8. 用户生成只读链接，朋友用普通浏览器即可访问，不需要 Codex。
 
-用户可以输入：
-
-- “9月带3个朋友去贵州玩3天，预算3000元，喜欢美食”
-- “行程轻松一点，每天最多3个主要活动”
-- “第三天如果下雨，换成室内方案”
-- “把总预算降低1000元，但保留核心景点”
-
-系统会根据输入判断是新建行程、修改行程、旅行问答还是澄清需求。生成行程后，用户可以继续对话修改；如果不满意，可以撤销上一轮修改。用户也可以生成只读分享链接，朋友不需要 Codex，也不需要登录开发环境，只要能访问网页链接即可查看。
-
-## 3. 技术架构
+## 3. 架构
 
 ```text
 Browser
   -> app/trip-studio.tsx
   -> POST /api/agent
   -> lib/trip-agent.ts
-  -> lib/skill-registry.ts
-  -> skills/*/runtime.ts
-  -> lib/bailian.ts / lib/amap.ts / lib/flyai.ts
+       -> lib/llm.ts (DeepSeek OpenAI-compatible API)
+       -> lib/skill-registry.ts
+            -> skills/*/runtime.ts
+            -> Open-Meteo / FlyAI MCP / Amap Web Service
+       -> normalize + validate
   -> TripPlan JSON
-  -> Browser rendering
+  -> browser rendering / D1 share storage
 ```
 
-前端负责输入、状态展示、错误提示、撤销、分享入口和行程可视化。
+前端不接触任何模型或地图 Key。所有第三方调用都发生在服务端。
 
-后端负责调用模型、执行 Skill 编排、调用第三方查询服务、校验结构化行程，并把结果返回前端。
+## 4. 模型调用
 
-模型层使用百炼 OpenAI 兼容接口：
+运行时模型已经从百炼切换为 DeepSeek：
 
-- `POST {BAILIAN_BASE_URL}/chat/completions`
-- `BAILIAN_API_KEY` 放在服务端环境变量中
-- 前端永远不接触 key
+- 接口：`POST {DEEPSEEK_BASE_URL}/chat/completions`
+- 默认地址：`https://api.deepseek.com`
+- 规划模型：`DEEPSEEK_MODEL=deepseek-chat`
+- 路由模型：`DEEPSEEK_ROUTER_MODEL=deepseek-chat`
+- 结构化输出：`response_format={"type":"json_object"}`
 
-## 4. 核心代码位置
+`lib/llm.ts` 负责服务端 Key、超时、HTTP 错误翻译、JSON 提取和 token 用量归一化。模型返回的实际模型名会显示在开发者面板。
 
-| 文件 | 作用 |
-| --- | --- |
-| `app/trip-studio.tsx` | 主交互界面，对话、行程展示、撤销和分享 |
-| `app/api/agent/route.ts` | 智能体接口入口，校验请求并调用 `runTripAgent` |
-| `lib/trip-agent.ts` | 智能体主流程：路由、Skill 编排、生成、修复、校验 |
-| `lib/bailian.ts` | 百炼 API 封装，包含 JSON 输出和联网研究调用 |
-| `lib/skill-registry.ts` | Skill 注册表和按阶段执行逻辑 |
-| `skills/*/SKILL.md` | 每个 Skill 的设计意图、边界和模型提示说明 |
-| `skills/*/runtime.ts` | 每个 Skill 的实际运行时代码 |
-| `lib/amap.ts` | 高德 POI 与路线增强 |
-| `lib/flyai.ts` | FlyAI POI 查询适配层 |
-| `app/api/trips/route.ts` | 只读分享链接的创建和读取 |
-| `docs/PROJECT_REPORT.md` | 当前项目说明报告 |
+## 5. API 与 Key 填写位置
 
-## 5. API 和 Key 填写位置
-
-本地开发使用项目根目录 `.env`。不要提交真实 key。
+本地开发：在根目录新建 `.env`，格式参考 `.env.example`。
 
 ```bash
-BAILIAN_API_KEY=your-bailian-api-key
-BAILIAN_BASE_URL=https://llm-zn6q9hwu66if9fdi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
-BAILIAN_MODEL=qwen3.6-plus
-BAILIAN_ROUTER_MODEL=qwen3.6-plus
-AMAP_WEB_SERVICE_KEY=your-amap-web-service-key
+DEEPSEEK_API_KEY=your-deepseek-api-key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_ROUTER_MODEL=deepseek-chat
+AMAP_WEB_SERVICE_KEY=optional-amap-key
 FLYAI_API_KEY=optional-flyai-key
 FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
 ```
 
-线上 Sites 部署使用生产环境变量。当前线上已配置：
+线上部署：通过托管平台的环境变量/Secret 管理界面填写。Key 不能写在源码、前端请求、Git 历史或 `.openai/hosting.json` 中。
 
-- `BAILIAN_API_KEY`
-- `BAILIAN_BASE_URL`
-- `BAILIAN_MODEL`
-- `BAILIAN_ROUTER_MODEL`
+## 6. Skill 如何使用
 
-当前线上未配置：
+每个 Skill 有三层：
 
-- `AMAP_WEB_SERVICE_KEY`
-- `FLYAI_API_KEY`
-- `FLYAI_MCP_URL`
-
-所以线上目前可以调用百炼模型；高德处于“生成地图搜索链接”的降级模式；FlyAI 处于“适配层已接入但没有独立 key”的降级模式。
-
-## 6. Skill 使用和编排逻辑
-
-本项目没有把 Skill 当成单纯的提示词片段，而是拆成三个层次：
-
-| 层次 | 作用 |
+| 层 | 作用 |
 | --- | --- |
-| `SKILL.md` | 说明这个 Skill 负责什么、不能做什么、如何使用外部能力 |
-| `runtime.ts` | 真正执行查询、降级、校验或增强 |
-| `skill-registry.ts` | 根据意图选择 Skill，并按阶段执行 |
+| `SKILL.md` | 定义触发场景、工作流程、边界和引用规则 |
+| `runtime.ts` | 实际执行查询、分析、增强或校验，并产生可观察 trace |
+| `skill-registry.ts` | 按意图选择 Skills，再按 prepare / enrich / validate 阶段顺序执行 |
 
-当前 Skill 分为三个阶段：
+当前 Skills：
 
-| 阶段 | 说明 |
-| --- | --- |
-| `prepare` | 在模型生成前准备材料，例如天气、联网研究、POI 候选 |
-| `enrich` | 在模型生成后补充地图链接、坐标和路线耗时 |
-| `validate` | 在返回前检查时间顺序、预算、结构完整性和非预订边界 |
+| Skill | 作用 | 来源方式 |
+| --- | --- | --- |
+| collect-trip-needs | 提取人数、日期、预算、节奏与限制 | 原创 |
+| assess-trip-risks | 根据长辈、儿童、行动限制、高海拔等调整节奏与准备 | 参考 Coze/SkillHub 的公开能力描述后原创实现 |
+| research-destination | Open-Meteo 天气 + 透明搜索入口 | 原创适配 |
+| discover-flyai-pois | 获取结构化景点候选，并过滤预订字段 | 合法复用 MIT 许可 FlyAI 的公开 `search-poi` 协议 |
+| plan-local-food | 按当天片区、口味和预算规划餐饮 | 参考 SkillHub 公开能力描述后原创实现 |
+| compose-itinerary | 生成详细的逐日路线 | 原创 |
+| revise-itinerary | 最小影响修改，保留稳定活动 ID | 原创 |
+| optimize-map-route | 高德 POI、坐标、距离与耗时增强 | 高德 Web Service 适配 |
+| validate-itinerary | 校验结构、时间、预算、来源和预订边界 | 原创确定性校验 |
+| share-trip | 创建和读取只读分享记录 | 原创 |
 
-新建行程时的编排是：
+### 为什么不能直接“无许可证挪用”
 
-```text
-collect-trip-needs
-  -> research-destination
-  -> discover-flyai-pois
-  -> compose-itinerary
-  -> optimize-map-route
-  -> validate-itinerary
-```
+FlyAI 仓库公开了 MIT License，所以可以复用并保留来源说明。SkillHub 的页面能公开读取 Skill 内容，但页面没有给出允许复制、修改和再发布的许可证；Coze 的完整 Skill 下载还需要注册认证。因此本项目只吸收公开的产品功能和工作流思想，代码、提示和规则均重新实现，不复制隐藏或未授权内容。
 
-修改行程时的编排是：
+## 7. 百炼为什么超时
 
-```text
-revise-itinerary
-  -> optimize-map-route
-  -> validate-itinerary
-```
-
-这种设计的好处是：模型负责理解和生成，Skill 负责把可复用能力、边界规则和工具调用固定下来。后续要接入新的成熟 Skill，例如更好的餐饮查询、酒店区域分析、地铁换乘策略，只需要增加 Skill 并注册到对应阶段。
-
-## 7. 成熟 Skill 的接入方式
-
-已经接入或预留的成熟能力：
-
-- 百炼 Web Search：用于目的地动态信息查询。
-- FlyAI POI：参考 `alibaba-flyai/flyai-skill` 的 `search-poi` 思路，适配为只读景点候选查询。
-- 高德地图：用于 POI 搜索、地图链接和路线耗时增强。
-
-Coze 和 SkillHub 上的公开页面可以作为产品思路参考，但不能直接复制隐藏提示词或无许可证内容。更稳妥的接入方式是让 Skill 作者提供可审计的 `SKILL.md`、工具 schema 和许可证，然后把它包装为本项目的 `skills/<name>/runtime.ts`。
-
-## 8. 当前截图问题判断
-
-截图里的错误是：
+此前的复杂新建行程会在一次同步 HTTP 请求里串行执行：
 
 ```text
-这次没有改动行程：Failed to fetch
+意图路由 -> 百炼联网研究 -> 长篇 TripPlan 生成 -> 失败重试 -> 校验修复
 ```
 
-我对线上接口做了两类测试：
+其中行程 JSON 包含多天、多活动、交通、美食、预算和来源，输出 token 较大；联网研究和规划又使用同一提供商。当任一步接近 12–38 秒的阶段超时，或者累计时间超过托管运行时/浏览器连接窗口，后端会中断，早期前端只看到 `Failed to fetch`。线上复测已证明简单问答成功而复杂规划返回“百炼 API 请求超时”，因此不是 Key 完全失效，而是长链路时延问题。
 
-- 简单问答可以正常返回，说明网页和百炼 key 并不是完全不可用。
-- 新建复杂行程会触发连接中断，说明问题集中在复杂规划链路。
+本次处理：
 
-最可能原因是：新建行程的联网研究阶段此前调用 `/responses`，而当前百炼兼容地址主要验证通过的是 `/chat/completions`。当 `/responses` 支持不完整或响应过慢时，请求会拖到托管运行时断开，浏览器只能显示 `Failed to fetch`。
+- 模型运行时切换到已验证可用的 DeepSeek `deepseek-chat`。
+- 移除百炼联网搜索这一额外模型请求，天气、FlyAI、高德和透明搜索入口分别处理。
+- 路由限制为 8 秒，主规划限制为 30 秒，修复调用限制为 18 秒。
+- 所有失败返回中文、可区分的服务端错误，不再只显示原始 `Failed to fetch`。
 
-本次整理已做两个修正：
+如果未来仍要稳定支持 7 天以上的超详细行程，下一步应改成异步任务：请求立即返回任务 ID，前端轮询 Skill 进度，彻底摆脱单个 HTTP 请求时限。
 
-- 联网研究改走 `/chat/completions`，并启用搜索参数。
-- 联网研究、路由、规划和修复都加入更短的超时，避免浏览器只得到原始网络错误。
-- 前端把 `Failed to fetch` 转成中文诊断文案，方便用户区分网络中断和模型错误。
+## 8. 动态信息和链接策略
 
-部署后复测结果：
+DeepSeek API 负责理解与结构化规划，不把模型常识伪装成实时数据。动态信息分三类：
 
-- 简单问答可正常返回。
-- 复杂新建行程不再表现为裸 `Failed to fetch`，而是返回明确的服务端错误：`百炼 API 请求超时`。
-- 因此当前问题不是 key 完全不可用，而是完整规划在同步请求模式下容易超过托管运行时窗口。根治方式是引入异步任务队列，或切换更快的规划模型。
+- 已核验：Open-Meteo、FlyAI、高德实际返回的数据。
+- 参考：模型的季节性或常识性建议，明确要求出发前复核。
+- 搜索入口：代码生成的百度/高德查询链接，方便用户点击继续查证，但不称为证据来源。
 
-## 9. 功能清单
+## 9. 测试策略
 
-当前已具备：
+- 构建测试：TypeScript 和服务端 bundle 能通过。
+- 单元测试：Key 只从服务端环境变量读取，源码不含真实 Key；DeepSeek、FlyAI、高德适配路径存在。
+- Skill 校验：用 `quick_validate.py` 检查所有 `SKILL.md` 的 frontmatter 和命名。
+- API 冒烟：用最小 JSON 请求验证 DeepSeek 账户，再用真实旅行请求验证完整 `/api/agent`。
+- 部署复测：检查复杂新建行程、继续修改和只读分享链接。
 
-- 自然语言新建行程
-- 对话式修改行程
-- 撤销上一轮修改
-- 每日路线和活动时间轴
-- 餐饮建议
-- 预算拆分
-- 地图搜索链接
-- 只读分享链接
-- 开发者模式查看 Skill 执行过程
-- 查询与规划边界控制
+## 10. 后续优化
 
-当前降级能力：
-
-- 未配置高德 key 时，只生成高德搜索链接，不显示真实坐标和路线耗时。
-- 未配置 FlyAI key 时，FlyAI Skill 会跳过真实 POI 查询，由百炼和地图链接兜底。
-- 远期天气只能作为季节性参考，不能承诺具体天气预报。
-
-## 10. 后续优化路线
-
-第一阶段：稳定体验。
-
-- 把复杂规划拆成异步任务：提交请求后先返回任务 ID，前端轮询进度，避免长请求被浏览器或运行时断开。
-- 增加“轻量规划”和“详细规划”模式，让用户在速度和细节之间选择。
-- 给每个 Skill 增加耗时与失败原因统计。
-
-第二阶段：增强查询质量。
-
-- 配置 `AMAP_WEB_SERVICE_KEY`，启用真实 POI、坐标和相邻路线耗时。
-- 配置 `FLYAI_API_KEY`，启用更成熟的景点候选查询。
-- 增加美食 Skill，例如按城市、片区、人均、口味、营业时间筛选餐厅。
-
-第三阶段：Agent 工程化。
-
-- 使用 LangGraph 管理状态和流程，把当前 `runTripAgent` 拆成 graph nodes。
-- 使用结构化 schema 管理 TripPlan 输出。
-- 接入持久化 checkpointer，支持跨设备继续修改同一份行程。
-
-第四阶段：部署和分享。
-
-- 当前链接托管在 `chatgpt.site`，朋友访问不需要 Codex。
-- 如果要成为普通可搜索网站，可以绑定自定义域名，并做 SEO 元数据。
-- 如果希望国内访问更稳，可以部署到阿里云、腾讯云、Vercel 或自有服务器；如果完全不用外网，同时又坚持只用 API 模型，则内网用户仍需要服务器能访问百炼 API。
+1. 配置高德和 FlyAI 的生产 Key，减少“待核验”内容。
+2. 引入异步任务与进度轮询，支持更长、更详细的规划。
+3. 为每个 Skill 记录成功率、耗时、降级原因和输出质量。
+4. 用 LangGraph 把当前 Registry 编排变成显式状态图，并增加持久化 checkpointer。
+5. 增加自定义域名、SEO 和访问分析，使朋友可直接搜索或访问普通网页。
