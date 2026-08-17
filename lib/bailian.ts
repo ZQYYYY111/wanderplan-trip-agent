@@ -7,6 +7,7 @@ type BailianOptions = {
   model?: string;
   maxTokens?: number;
   temperature?: number;
+  timeoutMs?: number;
   enableSearch?: boolean;
   searchOptions?: { forcedSearch?: boolean; enableSource?: boolean; searchStrategy?: "turbo" | "max" | "agent" };
 };
@@ -47,12 +48,20 @@ export async function callBailianJson<T>(options: BailianOptions): Promise<{ dat
     search_strategy: options.searchOptions.searchStrategy,
   };
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(90_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(options.timeoutMs ?? 45_000),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new Error("百炼 API 请求超时，请稍后重试，或改用更快的模型/缩小本次规划范围");
+    }
+    throw error;
+  }
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 500);
     throw new Error(`百炼 API 请求失败（${response.status}）：${detail}`);
@@ -78,10 +87,10 @@ export type BailianWebResearch={summary:string;sources:Array<{url:string;query?:
 export async function callBailianWebResearch(input:string):Promise<BailianWebResearch>{
   const apiKey=process.env.BAILIAN_API_KEY;if(!apiKey)throw new Error("百炼 API 尚未配置");
   const baseUrl=(process.env.BAILIAN_BASE_URL||DEFAULT_BASE_URL).replace(/\/$/,"");const model=process.env.BAILIAN_MODEL||"qwen3.6-plus";
-  const response=await fetch(`${baseUrl}/responses`,{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({model,input,tools:[{type:"web_search"}],enable_thinking:false,max_output_tokens:1800}),signal:AbortSignal.timeout(90_000)});
+  const response=await fetch(`${baseUrl}/chat/completions`,{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({model,messages:[{role:"system",content:"你是旅行研究员。只返回 JSON：{\"summary\":\"中文摘要\",\"sources\":[{\"url\":\"https://...\",\"query\":\"检索词\"}]}。sources 只能包含你通过联网检索实际获得的网页 URL；没有可靠 URL 时返回空数组。不要提供预订、下单或支付入口。"},{role:"user",content:input}],response_format:{type:"json_object"},temperature:0.1,max_tokens:1200,enable_search:true,search_options:{forced_search:true,enable_source:true,search_strategy:"turbo"},enable_thinking:false}),signal:AbortSignal.timeout(12_000)});
   if(!response.ok)throw new Error(`百炼联网研究失败（${response.status}）`);
-  const result=await response.json() as {output?:Array<{type:string;action?:{query?:string;sources?:Array<{type:string;url:string}>};content?:Array<{type:string;text?:string}>}>;usage?:{input_tokens?:number;output_tokens?:number}};
-  const message=result.output?.find(item=>item.type==="message");const summary=message?.content?.find(item=>item.type==="output_text")?.text||"";
-  const sources=(result.output||[]).filter(item=>item.type==="web_search_call").flatMap(item=>(item.action?.sources||[]).map(source=>({url:source.url,query:item.action?.query}))).filter((source,index,list)=>/^https?:\/\//.test(source.url)&&list.findIndex(other=>other.url===source.url)===index).slice(0,12);
-  return{summary,sources,usage:{model,promptTokens:result.usage?.input_tokens||0,completionTokens:result.usage?.output_tokens||0}};
+  const result=await response.json() as {model?:string;choices?:Array<{message?:{content?:string}}> ;usage?:{prompt_tokens?:number;completion_tokens?:number}};
+  const parsed=extractJson(result.choices?.[0]?.message?.content||"{}") as {summary?:string;sources?:Array<{url?:string;query?:string}>};
+  const sources=(parsed.sources||[]).filter(source=>source.url&&/^https?:\/\//.test(source.url)).map(source=>({url:source.url!,query:source.query})).filter((source,index,list)=>list.findIndex(other=>other.url===source.url)===index).slice(0,12);
+  return{summary:parsed.summary||"",sources,usage:{model:result.model||model,promptTokens:result.usage?.prompt_tokens||0,completionTokens:result.usage?.completion_tokens||0}};
 }
