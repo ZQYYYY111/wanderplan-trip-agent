@@ -41,6 +41,8 @@ FLYAI_MCP_URL=https://flyai.open.fliggy.com/mcp
   -> 网页展示、继续修改、撤销或生成只读分享链接
 ```
 
+为适配托管请求时限，1–3 天的新行程会按天并行调用同一个 DeepSeek API，再由服务端组装并统一校验；这不是本地模型，也不会减少 RAG、路线、美食和风险 Skills。
+
 ## Skill 编排
 
 | 意图 | 编排 |
