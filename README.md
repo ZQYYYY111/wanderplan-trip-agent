@@ -124,7 +124,7 @@ RAG 保存适合版本管理的稳定规划原则；天气、POI、开放政策�
 ### 2. 安装依赖
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/ZQYYYY111/wanderplan-trip-agent.git
 cd wanderplan-trip-agent
 npm install
 ```
